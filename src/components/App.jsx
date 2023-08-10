@@ -1,49 +1,43 @@
-import React, { Component } from 'react';
 import css from './App.module.css';
+import { useState } from 'react';
 import Searchbar from 'components/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
 import { ToastContainer } from 'react-toastify';
 import Modal from 'components/Modal';
 
-export class App extends Component {
-  state = {
-    searchQuery: '',
-    showModal: false,
-    largeImageURL: '',
-    alt: '',
+export function App() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [largeImageURL, setLargeImageURL] = useState('');
+  const [alt, setAlt] = useState('');
+
+  const handleSubmit = searchQuery => {
+    setSearchQuery(searchQuery);
   };
 
-  handleSubmit = searchQuery => {
-    this.setState({ searchQuery });
+  const toggleModal = () => {
+    setShowModal(!showModal);
   };
 
-  toggleModal = () => {
-    this.setState(prevState => ({ showModal: !prevState.showModal }));
+  const showLargeImage = (largeImageURL, alt) => {
+    setLargeImageURL(largeImageURL);
+    setAlt(alt);
+    toggleModal();
   };
 
-  showLargeImage = (largeImageURL, alt) => {
-    this.setState({ largeImageURL, alt });
-    this.toggleModal();
-  };
-
-  render() {
-    const { searchQuery, showModal, largeImageURL, alt } = this.state;
-    const { handleSubmit, showLargeImage, toggleModal } = this;
-
-    return (
-      <div className={css.app}>
-        <Searchbar onSubmit={handleSubmit} />
-        <ImageGallery
-          searchQuery={searchQuery}
-          showLargeImage={showLargeImage}
-        />
-        <ToastContainer />
-        {showModal && (
-          <Modal onClose={toggleModal}>
-            <img src={largeImageURL} alt={alt} />
-          </Modal>
-        )}
-      </div>
-    );
-  }
+  return (
+    <div className={css.app}>
+      <Searchbar handleSubmit={handleSubmit} />
+      <ImageGallery
+        newSearchQuery={searchQuery}
+        showLargeImage={showLargeImage}
+      />
+      <ToastContainer />
+      {showModal && (
+        <Modal onClose={toggleModal}>
+          <img src={largeImageURL} alt={alt} />
+        </Modal>
+      )}
+    </div>
+  );
 }

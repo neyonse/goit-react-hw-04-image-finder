@@ -1,115 +1,103 @@
-import React, { Component } from 'react';
 import css from './ImageGallery.module.css';
+import { useState, useEffect } from 'react';
+import { usePrevious } from '@reactuses/core';
 import APIservices from 'utils';
 import Loader from 'components/Loader';
 import ImageGalleryItem from 'components/ImageGalleryItem';
 import Button from 'components/Button';
 import PropTypes from 'prop-types';
 
-export default class ImageGallery extends Component {
-  state = {
-    searchQuery: '',
-    data: [],
-    total: '',
-    page: 1,
-    status: 'idle',
-    showBtn: false,
-    showBtnLoader: false,
-  };
+export default function ImageGallery({ newSearchQuery, showLargeImage }) {
+  const [searchQuery, setSearchQuery] = useState([]);
+  const [data, setData] = useState([]);
+  const [total, setTotal] = useState('');
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState('idle');
+  const [showBtn, setShowBtn] = useState(false);
+  const [showBtnLoader, setShowBtnLoader] = useState(false);
 
-  componentDidUpdate(prevProps, prevState) {
-    const newSearchQuery = this.props.searchQuery;
-    const { searchQuery, data, page } = this.state;
+  const prevPage = usePrevious(page);
 
-    if (prevProps.searchQuery !== newSearchQuery) {
-      this.setState({
-        searchQuery: newSearchQuery,
-        data: [],
-        page: 1,
-        status: 'idle',
-      });
+  useEffect(() => {
+    if (!newSearchQuery) return;
 
-      this.setState({ status: 'pending' });
-      this.fetchImages(newSearchQuery, 1);
+    const fetchImages = async (query, page) => {
+      try {
+        const { hits, total } = await APIservices.fetchImages(query, page);
+
+        setData(prevData => [...prevData, ...hits]);
+        setTotal(total);
+        setShowBtn(page < Math.ceil(total / 12) ? true : false);
+        setShowBtnLoader(false);
+        setStatus('resolved');
+      } catch (error) {
+        setStatus('rejected');
+      }
+    };
+
+    if (searchQuery !== newSearchQuery) {
+      setSearchQuery(newSearchQuery);
+      setData([]);
+      setPage(1);
+      setStatus('pending');
+
+      fetchImages(newSearchQuery, 1);
       return;
     }
 
-    if (prevState.page !== page && data.length !== 0) {
-      this.setState({ showBtnLoader: true });
-      this.fetchImages(searchQuery, page);
+    if (prevPage !== page && data.length !== 0) {
+      setShowBtnLoader(true);
+      fetchImages(searchQuery, page);
       return;
     }
-  }
+  }, [page, newSearchQuery, searchQuery, prevPage, data.length]);
 
-  async fetchImages(searchQuery, page) {
-    try {
-      const { hits, total } = await APIservices.fetchImages(searchQuery, page);
-
-      this.setState(prevState => ({
-        total,
-        status: 'resolved',
-        showBtnLoader: false,
-        data: [...prevState.data, ...hits],
-        showBtn: page < Math.ceil(total / 12) ? true : false,
-      }));
-    } catch (error) {
-      this.setState({ status: 'rejected' });
-    }
-  }
-
-  handleLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const handleLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  render() {
-    const { searchQuery, data, total, status, showBtn, showBtnLoader } =
-      this.state;
+  if (status === 'idle') {
+    return (
+      <p className={css.galleryMessage}>Enter your query to find the images.</p>
+    );
+  }
 
-    if (status === 'idle') {
-      return (
+  if (status === 'pending') {
+    return <Loader message={'Loading images... Please, wait.'} />;
+  }
+
+  if (status === 'rejected') {
+    return (
+      <p className={css.galleryMessage} style={{ color: 'red' }}>
+        Oops! Something went wrong. Please, try reload the page.
+      </p>
+    );
+  }
+
+  if (status === 'resolved') {
+    return (
+      <section className={css.gallerySection}>
         <p className={css.galleryMessage}>
-          Enter your query to find the images.
+          We found {total} images for "{newSearchQuery}"!
         </p>
-      );
-    }
-
-    if (status === 'pending') {
-      return <Loader message={'Loading images... Please, wait.'} />;
-    }
-
-    if (status === 'rejected') {
-      return (
-        <p className={css.galleryMessage} style={{ color: 'red' }}>
-          Oops! Something went wrong. Please, try reload the page.
-        </p>
-      );
-    }
-
-    if (status === 'resolved') {
-      return (
-        <section className={css.gallerySection}>
-          <p className={css.galleryMessage}>
-            We found {total} images for "{searchQuery}"!
-          </p>
-          <ul className={css.gallery}>
-            {data.map(el => (
-              <ImageGalleryItem
-                key={el.id}
-                imageInfo={el}
-                showLargeImage={this.props.showLargeImage}
-              />
-            ))}
-          </ul>
-          {showBtn && (
-            <Button onClick={this.handleLoadMore} showLoader={showBtnLoader} />
-          )}
-        </section>
-      );
-    }
+        <ul className={css.gallery}>
+          {data.map(el => (
+            <ImageGalleryItem
+              key={el.id}
+              imageInfo={el}
+              showLargeImage={showLargeImage}
+            />
+          ))}
+        </ul>
+        {showBtn && (
+          <Button onClick={handleLoadMore} showLoader={showBtnLoader} />
+        )}
+      </section>
+    );
   }
 }
 
 ImageGallery.propTypes = {
-  searchQuery: PropTypes.string.isRequired,
+  newSearchQuery: PropTypes.string.isRequired,
   showLargeImage: PropTypes.func.isRequired,
 };

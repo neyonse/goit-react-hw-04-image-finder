@@ -1,5 +1,5 @@
-import { ThreeDots } from 'react-loader-spinner';
 import css from './Loader.module.css';
+import { ThreeDots } from 'react-loader-spinner';
 import PropTypes from 'prop-types';
 
 export default function Loader({ message }) {
